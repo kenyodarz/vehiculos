@@ -39,7 +39,7 @@ public class VehiculosApplication implements CommandLineRunner {
         var letras = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
                 "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z");
         var numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 0);
-        return String.format("%s%s%s%s%s%s",
+        return String.format("%s%s%s - %s%s%s",
                 letras.get(new Random().nextInt(letras.size())),
                 letras.get(new Random().nextInt(letras.size())),
                 letras.get(new Random().nextInt(letras.size())),
@@ -153,9 +153,9 @@ public class VehiculosApplication implements CommandLineRunner {
     }
 
 
-    private Map<Double, List<Vehiculo>> getVehicleByValue(List<Vehiculo> vehiculos) {
+    private Map<Double, List<Vehiculo>> getVehicleByValue(List<Vehiculo> list) {
         LocalDate getLocalDate = LocalDate.now();
-        return vehiculos.stream().peek(vehiculo -> {
+        return list.stream().peek(vehiculo -> {
             for (int i = vehiculo.getModelo(); i < getLocalDate.getYear(); i++) {
                 vehiculo.setPrecio(vehiculo.getPrecio() * 0.9);
             }
@@ -165,58 +165,44 @@ public class VehiculosApplication implements CommandLineRunner {
     private Map<String, String> getDataCar(List<Vehiculo> v) {
         List<Vehiculo> carros = v.stream().filter(vehiculo -> vehiculo.getTipo().equals("Carro"))
                 .collect(Collectors.toList());
-        Map<String, String> mapCar = new HashMap<>();
-        mapCar.put("mas_costoso", carros.stream().map(Vehiculo::getPrecio)
-                .max(Double::compareTo).orElseThrow().toString());
-        mapCar.put("menos_costoso", carros.stream().map(Vehiculo::getPrecio)
-                .min(Double::compareTo).orElseThrow().toString());
-        mapCar.put("promedio", String.valueOf(carros.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
-        mapCar.put("suma", String.valueOf(carros.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).sum()));
-        return mapCar;
+        return getStringStringMap(carros);
     }
+
 
     private Map<String, String> getDataMoto(List<Vehiculo> v) {
         List<Vehiculo> motos = v.stream().filter(vehiculo -> vehiculo.getTipo().equals("Moto"))
                 .collect(Collectors.toList());
-        Map<String, String> mapMoto = new HashMap<>();
-        mapMoto.put("mas_costoso", motos.stream().map(Vehiculo::getPrecio)
-                .max(Double::compareTo).orElseThrow().toString());
-        mapMoto.put("menos_costoso", motos.stream().map(Vehiculo::getPrecio)
-                .min(Double::compareTo).orElseThrow().toString());
-        mapMoto.put("promedio", String.valueOf(motos.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
-        mapMoto.put("suma", String.valueOf(motos.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).sum()));
-
-        return mapMoto;
+        return getStringStringMap(motos);
     }
 
     private Map<String, String> getDataFromBrand(List<Vehiculo> v) {
-        Map<String, String> mapMoto = new HashMap<>();
-        mapMoto.put("mas_costoso", v.stream().map(Vehiculo::getPrecio)
-                .max(Double::compareTo).orElseThrow().toString());
-        mapMoto.put("menos_costoso", v.stream().map(Vehiculo::getPrecio)
-                .min(Double::compareTo).orElseThrow().toString());
-        mapMoto.put("promedio", String.valueOf(v.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
-        mapMoto.put("suma", String.valueOf(v.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).sum()));
-        return mapMoto;
+        return getStringStringMap(v);
     }
 
-    private Map<String, Map<Integer, List<String>>> getByBrandAndByColorAndByModel(List<Vehiculo> vehiculos) {
+    private Map<String, String> getStringStringMap(List<Vehiculo> v) {
+        Map<String, String> mapCar = new HashMap<>();
+        mapCar.put("mas_costoso", v.stream().map(Vehiculo::getPrecio)
+                .max(Double::compareTo).orElseThrow().toString());
+        mapCar.put("menos_costoso", v.stream().map(Vehiculo::getPrecio)
+                .min(Double::compareTo).orElseThrow().toString());
+        mapCar.put("promedio", String.valueOf(v.stream().map(Vehiculo::getPrecio)
+                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
+        mapCar.put("suma", String.valueOf(v.stream().map(Vehiculo::getPrecio)
+                .flatMapToDouble(DoubleStream::of).sum()));
+        return mapCar;
+    }
+
+    private Map<String, Map<Integer, List<String>>> getByBrandAndByColorAndByModel(List<Vehiculo> list) {
         Map<String, Map<Integer, List<String>>> result = new HashMap<>();
-        vehiculos.stream().collect(Collectors.groupingBy(Vehiculo::getMarca))
-                .forEach((marca, vehiculosTMP) ->
-                        result.put(marca, getByBrandAndByColor(vehiculosTMP, marca)));
+        list.stream().collect(Collectors.groupingBy(Vehiculo::getMarca))
+                .forEach((marca, vehicleTemp) ->
+                        result.put(marca, getByBrandAndByColor(vehicleTemp, marca)));
         return result;
     }
 
-    private Map<Integer, List<String>> getByBrandAndByColor(List<Vehiculo> vehiculos, String marca) {
+    private Map<Integer, List<String>> getByBrandAndByColor(List<Vehiculo> list, String marca) {
         Map<Integer, List<String>> result = new HashMap<>();
-        vehiculos.stream()
+        list.stream()
                 .filter(vehiculo -> vehiculo.getMarca().equals(marca))
                 .collect(Collectors.groupingBy(Vehiculo::getModelo))
                 .forEach((clave, valor) -> result.put(clave, valor.stream().map(Vehiculo::getColor)
