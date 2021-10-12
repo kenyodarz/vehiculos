@@ -23,10 +23,10 @@ import java.util.stream.DoubleStream;
 
 @SpringBootApplication
 @Slf4j
-public class VehiculosApplication implements CommandLineRunner {
+public class VehiclesApplication implements CommandLineRunner {
 
     public static void main(String[] args) {
-        SpringApplication.run(VehiculosApplication.class, args);
+        SpringApplication.run(VehiclesApplication.class, args);
     }
 
     public static String getStringFromFileName() throws IOException {
@@ -48,92 +48,133 @@ public class VehiculosApplication implements CommandLineRunner {
                 numbers.get(new Random().nextInt(numbers.size())));
     }
 
+    private static List<Vehiculo> getVehicles(String json) throws JsonProcessingException {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        Vehiculo[] array = objectMapper.readValue(json, Vehiculo[].class);
+        return Arrays.asList(array);
+    }
+
+    private static Map<Double, List<Vehiculo>> getVehicleByValue(List<Vehiculo> list) {
+        LocalDate getLocalDate = LocalDate.now();
+        return list.stream().peek(vehiculo -> {
+            for (int i = vehiculo.getModelo(); i < getLocalDate.getYear(); i++) {
+                vehiculo.setPrecio(vehiculo.getPrecio() * 0.9);
+            }
+        }).collect(Collectors.groupingBy(Vehiculo::getPrecio));
+    }
+
+    private static Map<String, String> getStringStringMap(List<Vehiculo> v) {
+        Map<String, String> mapCar = new HashMap<>();
+        mapCar.put("mas_costoso", v.stream().map(Vehiculo::getPrecio)
+                .max(Double::compareTo).orElseThrow().toString());
+        mapCar.put("menos_costoso", v.stream().map(Vehiculo::getPrecio)
+                .min(Double::compareTo).orElseThrow().toString());
+        mapCar.put("promedio", String.valueOf(v.stream().map(Vehiculo::getPrecio)
+                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
+        mapCar.put("suma", String.valueOf(v.stream().map(Vehiculo::getPrecio)
+                .flatMapToDouble(DoubleStream::of).sum()));
+        return mapCar;
+    }
+
+    private static Map<Integer, List<String>> getByBrandAndByColor(List<Vehiculo> list, String marca) {
+        Map<Integer, List<String>> result = new HashMap<>();
+        list.stream()
+                .filter(vehiculo -> vehiculo.getMarca().equals(marca))
+                .collect(Collectors.groupingBy(Vehiculo::getModelo))
+                .forEach((clave, valor) -> result.put(clave, valor.stream().map(Vehiculo::getColor)
+                        .distinct().collect(Collectors.toList())));
+        return result;
+    }
+
     @Override
     public void run(String... args) throws Exception {
         String json = getStringFromFileName();
 
         /* Función que crea una lista de carros*/
-        var carroList = getVehiculos(json)
+        var carroList = getVehicles(json)
                 .stream()
                 .filter(vehiculo -> vehiculo.getTipo().equals("Carro"))
                 .collect(Collectors.toList());
         log.info("Lista de Carros");
         carroList.forEach(vehiculo -> log.info(vehiculo.toString()));
         /* Función que crea una lista de motos*/
-        var motosList = getVehiculos(json)
+        var motosList = getVehicles(json)
                 .stream()
                 .filter(vehiculo -> vehiculo.getTipo().equals("Moto"))
                 .collect(Collectors.toList());
         log.info("Lista de Motos");
         motosList.forEach(vehiculo -> log.info(vehiculo.toString()));
         /* Función que crea un Map con clave (Carro, Moto)*/
-        var map = getVehiculos(json)
+        var map = getVehicles(json)
                 .stream()
                 .collect(Collectors.groupingBy(Vehiculo::getTipo));
-        log.info("Map -> {}", map.toString());
+        log.info("Map Carro, Motos");
+        log.info("Map Carro/Moto -> {}", map.toString());
 
         /* Función que Calcule los impuestos */
-        var vehicleWithImpuestos = getVehiculos(json)
+        var vehicleWithImpuestos = getVehicles(json)
                 .stream()
                 .map(this::taxCalculator)
                 .collect(Collectors.toList());
+        log.info("Lista de vehículos con impuestos");
         log.info("vehicleWithImpuestos -> {}", vehicleWithImpuestos);
 
         /*  Función para establecer el estado del vehículo ('Ok', 'Averiado'). Usar aleatorios. */
-        var vehicleWithStatus = getVehiculos(json)
+        var vehicleWithStatus = getVehicles(json)
                 .stream()
                 .map(this::setEstado)
                 .collect(Collectors.toList());
+        log.info("Lista del estado del vehículo ('Ok', 'Averiado')");
         log.info("vehicleWithStatus -> {}", vehicleWithStatus);
 
         /*  Definir comportamiento Encender() según el estado, retornar String con el formato: Vehículo (placa):
         Encendido/No se pudo encender */
         /* Función para obtener lista de los Strings al llamar al método Encender() de cada vehículo. */
-        getVehiculos(json)
+        log.info("Lista de Encender() según el estado del vehículo ('Ok', 'Averiado')");
+        getVehicles(json)
                 .stream()
                 .map(this::setEstado)
                 .map(this::getEncender)
                 .forEach(s -> log.info("Estado: {}", s));
 
         /*Función para obtener los vehículos clasificados según el año de fabricación.*/
-        var modelGroup = getVehiculos(json)
+        var modelGroup = getVehicles(json)
                 .stream()
                 .collect(Collectors.groupingBy(Vehiculo::getModelo));
+        log.info("Lista de vehículos clasificados según el año de fabricación");
         log.info("modelGroup -> {}", modelGroup.toString());
 
         /* Función para obtener los vehículos clasificados
         por su valor actual en mercado (al precio restarle el 10% por año). */
-        var vehicleDeprecation = getVehicleByValue(getVehiculos(json));
+        var vehicleDeprecation = getVehicleByValue(getVehicles(json));
+        log.info("Lista de vehículos valor actual en mercado (al precio restarle el 10% por año).");
         log.info("vehicleDeprecation -> {}", vehicleDeprecation);
 
         /* Función para clasificar los carros si son automáticos o no. */
-        var vehicleTransmission = getVehiculos(json)
+        var vehicleTransmission = getVehicles(json)
                 .stream()
                 .filter(vehiculo -> vehiculo.getTipo().equals("Carro"))
                 .collect(Collectors.groupingBy(Vehiculo::getTransmission));
+        log.info("Lista de los carros si son automáticos o no.");
         log.info("vehicleTransmission -> {}", vehicleTransmission.toString());
 
         /* Función para obtener datos sobre el precio de los carros (más costoso, menos costoso, promedio, suma). */
-        log.info("Data car -> {}", this.getDataCar(getVehiculos(json)));
+        log.info("Data car -> {}", this.getDataCar(getVehicles(json)));
         /* Función para obtener datos sobre el precio de las motos (más costosa, menos costosa, promedio, suma). */
-        log.info("Data Moto -> {}", this.getDataMoto(getVehiculos(json)));
+        log.info("Data Moto -> {}", this.getDataMoto(getVehicles(json)));
 
         /* Función para obtener, dada una marca, el promedio de los precios de sus vehículos, el más costoso y menos costoso. */
-        var vehicleForBrand = this.getDataFromBrand(getVehiculos(json)
+        var vehicleForBrand = this.getDataFromBrand(getVehicles(json)
                 .stream()
                 .filter(vehiculo -> vehiculo.getMarca().equals("Audi"))
                 .collect(Collectors.toList()));
+        log.info("Lista dada una marca, el promedio de los precios de sus vehículos");
         log.info("Data Brand -> {}", vehicleForBrand);
 
         /* Función para clasificar los colores disponibles por modelo, de una marca en específico. */
-        var modelGroupModelAndGroup = getByBrandAndByColorAndByModel(getVehiculos(json));
+        var modelGroupModelAndGroup = getByBrandAndByColorAndByModel(getVehicles(json));
+        log.info("Lista de los colores disponibles por modelo, de una marca en específico.");
         log.info("Crazy map -> {}", modelGroupModelAndGroup);
-    }
-
-    private List<Vehiculo> getVehiculos(String json) throws JsonProcessingException {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        Vehiculo[] array = objectMapper.readValue(json, Vehiculo[].class);
-        return Arrays.asList(array);
     }
 
     private Vehiculo taxCalculator(Vehiculo v) {
@@ -152,22 +193,11 @@ public class VehiculosApplication implements CommandLineRunner {
                 v.getEstado().equals("OK") ? "Encendido" : "No se pudo encender");
     }
 
-
-    private Map<Double, List<Vehiculo>> getVehicleByValue(List<Vehiculo> list) {
-        LocalDate getLocalDate = LocalDate.now();
-        return list.stream().peek(vehiculo -> {
-            for (int i = vehiculo.getModelo(); i < getLocalDate.getYear(); i++) {
-                vehiculo.setPrecio(vehiculo.getPrecio() * 0.9);
-            }
-        }).collect(Collectors.groupingBy(Vehiculo::getPrecio));
-    }
-
     private Map<String, String> getDataCar(List<Vehiculo> v) {
         List<Vehiculo> carros = v.stream().filter(vehiculo -> vehiculo.getTipo().equals("Carro"))
                 .collect(Collectors.toList());
         return getStringStringMap(carros);
     }
-
 
     private Map<String, String> getDataMoto(List<Vehiculo> v) {
         List<Vehiculo> motos = v.stream().filter(vehiculo -> vehiculo.getTipo().equals("Moto"))
@@ -179,34 +209,11 @@ public class VehiculosApplication implements CommandLineRunner {
         return getStringStringMap(v);
     }
 
-    private Map<String, String> getStringStringMap(List<Vehiculo> v) {
-        Map<String, String> mapCar = new HashMap<>();
-        mapCar.put("mas_costoso", v.stream().map(Vehiculo::getPrecio)
-                .max(Double::compareTo).orElseThrow().toString());
-        mapCar.put("menos_costoso", v.stream().map(Vehiculo::getPrecio)
-                .min(Double::compareTo).orElseThrow().toString());
-        mapCar.put("promedio", String.valueOf(v.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).average().orElseThrow()));
-        mapCar.put("suma", String.valueOf(v.stream().map(Vehiculo::getPrecio)
-                .flatMapToDouble(DoubleStream::of).sum()));
-        return mapCar;
-    }
-
     private Map<String, Map<Integer, List<String>>> getByBrandAndByColorAndByModel(List<Vehiculo> list) {
         Map<String, Map<Integer, List<String>>> result = new HashMap<>();
         list.stream().collect(Collectors.groupingBy(Vehiculo::getMarca))
                 .forEach((marca, vehicleTemp) ->
                         result.put(marca, getByBrandAndByColor(vehicleTemp, marca)));
-        return result;
-    }
-
-    private Map<Integer, List<String>> getByBrandAndByColor(List<Vehiculo> list, String marca) {
-        Map<Integer, List<String>> result = new HashMap<>();
-        list.stream()
-                .filter(vehiculo -> vehiculo.getMarca().equals(marca))
-                .collect(Collectors.groupingBy(Vehiculo::getModelo))
-                .forEach((clave, valor) -> result.put(clave, valor.stream().map(Vehiculo::getColor)
-                        .distinct().collect(Collectors.toList())));
         return result;
     }
 
